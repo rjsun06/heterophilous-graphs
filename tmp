@@ -1,0 +1,6 @@
+MD build
+CD build
+cmake -DCMAKE_CXX_FLAGS="/DDGL_EXPORTS" -DCMAKE_CONFIGURATION_TYPES="Release" -DDMLC_FORCE_SHARED_CRT=ON -DUSE_CUDA=ON .. -G "Visual Studio 16 2022"
+MSbuild dgl.sln /m
+CD ..\python
+python setup.py install
