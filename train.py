@@ -109,7 +109,8 @@ def main():
                       hidden_dim_multiplier=args.hidden_dim_multiplier,
                       num_heads=args.num_heads,
                       normalization=args.normalization,
-                      dropout=args.dropout)
+                      dropout=args.dropout,
+                      graph = dataset.graph)
 
         model.to(args.device)
 

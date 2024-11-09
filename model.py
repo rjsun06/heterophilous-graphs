@@ -23,7 +23,7 @@ NORMALIZATION = {
 
 class Model(nn.Module):
     def __init__(self, model_name, num_layers, input_dim, hidden_dim, output_dim, hidden_dim_multiplier, num_heads,
-                 normalization, dropout):
+                 normalization, dropout, graph):
 
         super().__init__()
 
@@ -41,7 +41,8 @@ class Model(nn.Module):
                                                         dim=hidden_dim,
                                                         hidden_dim_multiplier=hidden_dim_multiplier,
                                                         num_heads=num_heads,
-                                                        dropout=dropout)
+                                                        dropout=dropout,
+                                                        graph=graph)
 
                 self.residual_modules.append(residual_module)
 

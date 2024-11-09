@@ -9,7 +9,7 @@ from sklearn.metrics import roc_auc_score
 
 class Dataset:
     def __init__(self, name, add_self_loops=False, device='cpu', use_sgc_features=False, use_identity_features=False,
-                 use_adjacency_features=False, do_not_use_original_features=False):
+                 use_adjacency_features=False, do_not_use_original_features=False,bin2float=True):
 
         if do_not_use_original_features and not any([use_sgc_features, use_identity_features, use_adjacency_features]):
             raise ValueError('If original node features are not used, at least one of the arguments '
@@ -18,7 +18,7 @@ class Dataset:
         print('Preparing data...')
         data = np.load(os.path.join('data', f'{name.replace("-", "_")}.npz'))
         node_features = torch.tensor(data['node_features'])
-        labels = torch.tensor(data['node_labels'])
+        labels = torch.tensor(data['node_labels']).long()
         edges = torch.tensor(data['edges'])
 
         graph = dgl.graph((edges[:, 0], edges[:, 1]), num_nodes=len(node_features), idtype=torch.int)
@@ -31,7 +31,7 @@ class Dataset:
 
         num_classes = len(labels.unique())
         num_targets = 1 if num_classes == 2 else num_classes
-        if num_targets == 1:
+        if num_targets == 1 and bin2float:
             labels = labels.float()
 
         train_masks = torch.tensor(data['train_masks'])

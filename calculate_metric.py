@@ -1,10 +1,7 @@
 import argparse
-from tqdm import tqdm
-
 
 from metrics import METRICS
 from datasets import Dataset
-from utils import Logger, get_parameter_groups
 import pandas as pd
 
 available_datasets = ['roman-empire', 'amazon-ratings', 'minesweeper', 'tolokers', 'questions',
@@ -13,7 +10,6 @@ available_datasets = ['roman-empire', 'amazon-ratings', 'minesweeper', 'tolokers
 'actor', 'texas', 'texas-4-classes', 'cornell', 'wisconsin']
 
 available_metrics = METRICS.keys()
-
 def get_args():
     parser = argparse.ArgumentParser()
 
@@ -43,7 +39,6 @@ def get_args():
 
     return args
 
-
 def cal_metrics(dataset_name):
     args = get_args()
     dataset = Dataset(name=dataset_name,
@@ -52,19 +47,20 @@ def cal_metrics(dataset_name):
                     use_sgc_features=args.use_sgc_features,
                     use_identity_features=args.use_identity_features,
                     use_adjacency_features=args.use_adjacency_features,
-                    do_not_use_original_features=args.do_not_use_original_features)
+                    do_not_use_original_features=args.do_not_use_original_features,
+                    bin2float=False)
     labels = dataset.labels
     features = dataset.node_features
     graph = dataset.graph
-
     results = []
 
     for name, metric in METRICS.items():
         if args.metrics == 'all' or name in args.metrics:
             value = metric(labels, features, graph)  # Calculate the metric
             results.append({"Metric": name, dataset_name: value})  # Append to results
-
-    return pd.DataFrame(results)
+    # print(results)
+    ret = pd.DataFrame(results)
+    return ret
 
 def main():
     args = get_args()

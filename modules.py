@@ -40,37 +40,40 @@ class FeedForwardModule(nn.Module):
 
 
 class GCNModule(nn.Module):
-    def __init__(self, dim, hidden_dim_multiplier, dropout, **kwargs):
+    def __init__(self, dim, hidden_dim_multiplier, dropout, graph, **kwargs):
         super().__init__()
         self.feed_forward_module = FeedForwardModule(dim=dim,
                                                      hidden_dim_multiplier=hidden_dim_multiplier,
                                                      dropout=dropout)
 
-    def forward(self, graph, x):
+        self.graph = graph
         degrees = graph.out_degrees().float()
         degree_edge_products = ops.u_mul_v(graph, degrees, degrees)
-        norm_coefs = 1 / degree_edge_products ** 0.5
+        self.norm_coefs = 1 / degree_edge_products ** 0.5
 
-        x = ops.u_mul_e_sum(graph, x, norm_coefs)
+    def forward(self, graph, x):
 
-        x = self.feed_forward_module(graph, x)
+        x = ops.u_mul_e_sum(self.graph, x, self.norm_coefs)
+
+        x = self.feed_forward_module(self.graph, x)
 
         return x
 
 
 class SAGEModule(nn.Module):
-    def __init__(self, dim, hidden_dim_multiplier, dropout, **kwargs):
+    def __init__(self, dim, hidden_dim_multiplier, dropout, graph, **kwargs):
         super().__init__()
         self.feed_forward_module = FeedForwardModule(dim=dim,
                                                      input_dim_multiplier=2,
                                                      hidden_dim_multiplier=hidden_dim_multiplier,
                                                      dropout=dropout)
-
+        self.graph = graph
     def forward(self, graph, x):
-        message = ops.copy_u_mean(graph, x)
+
+        message = ops.copy_u_mean(self.graph, x)
         x = torch.cat([x, message], axis=1)
 
-        x = self.feed_forward_module(graph, x)
+        x = self.feed_forward_module(self.graph, x)
 
         return x
 
@@ -81,7 +84,7 @@ def _check_dim_and_num_heads_consistency(dim, num_heads):
 
 
 class GATModule(nn.Module):
-    def __init__(self, dim, hidden_dim_multiplier, num_heads, dropout, **kwargs):
+    def __init__(self, dim, hidden_dim_multiplier, num_heads, dropout, graph, **kwargs):
         super().__init__()
 
         _check_dim_and_num_heads_consistency(dim, num_heads)
@@ -98,27 +101,28 @@ class GATModule(nn.Module):
         self.feed_forward_module = FeedForwardModule(dim=dim,
                                                      hidden_dim_multiplier=hidden_dim_multiplier,
                                                      dropout=dropout)
+        self.graph = graph
 
     def forward(self, graph, x):
         x = self.input_linear(x)
 
         attn_scores_u = self.attn_linear_u(x)
         attn_scores_v = self.attn_linear_v(x)
-        attn_scores = ops.u_add_v(graph, attn_scores_u, attn_scores_v)
+        attn_scores = ops.u_add_v(self.graph, attn_scores_u, attn_scores_v)
         attn_scores = self.attn_act(attn_scores)
-        attn_probs = edge_softmax(graph, attn_scores)
+        attn_probs = edge_softmax(self.graph, attn_scores)
 
         x = x.reshape(-1, self.head_dim, self.num_heads)
-        x = ops.u_mul_e_sum(graph, x, attn_probs)
+        x = ops.u_mul_e_sum(self.graph, x, attn_probs)
         x = x.reshape(-1, self.dim)
 
-        x = self.feed_forward_module(graph, x)
+        x = self.feed_forward_module(self.graph, x)
 
         return x
 
 
 class GATSepModule(nn.Module):
-    def __init__(self, dim, hidden_dim_multiplier, num_heads, dropout, **kwargs):
+    def __init__(self, dim, hidden_dim_multiplier, num_heads, dropout, graph, **kwargs):
         super().__init__()
 
         _check_dim_and_num_heads_consistency(dim, num_heads)
@@ -136,29 +140,30 @@ class GATSepModule(nn.Module):
                                                      input_dim_multiplier=2,
                                                      hidden_dim_multiplier=hidden_dim_multiplier,
                                                      dropout=dropout)
+        self.graph = graph
 
     def forward(self, graph, x):
         x = self.input_linear(x)
 
         attn_scores_u = self.attn_linear_u(x)
         attn_scores_v = self.attn_linear_v(x)
-        attn_scores = ops.u_add_v(graph, attn_scores_u, attn_scores_v)
+        attn_scores = ops.u_add_v(self.graph, attn_scores_u, attn_scores_v)
         attn_scores = self.attn_act(attn_scores)
-        attn_probs = edge_softmax(graph, attn_scores)
+        attn_probs = edge_softmax(self.graph, attn_scores)
 
         x = x.reshape(-1, self.head_dim, self.num_heads)
-        message = ops.u_mul_e_sum(graph, x, attn_probs)
+        message = ops.u_mul_e_sum(self.graph, x, attn_probs)
         x = x.reshape(-1, self.dim)
         message = message.reshape(-1, self.dim)
         x = torch.cat([x, message], axis=1)
 
-        x = self.feed_forward_module(graph, x)
+        x = self.feed_forward_module(self.graph, x)
 
         return x
 
 
 class TransformerAttentionModule(nn.Module):
-    def __init__(self, dim, num_heads, dropout, **kwargs):
+    def __init__(self, dim, num_heads, dropout, graph, **kwargs):
         super().__init__()
 
         _check_dim_and_num_heads_consistency(dim, num_heads)
@@ -173,6 +178,8 @@ class TransformerAttentionModule(nn.Module):
         self.output_linear = nn.Linear(in_features=dim, out_features=dim)
         self.dropout = nn.Dropout(p=dropout)
 
+        self.graph = graph
+
     def forward(self, graph, x):
         queries = self.attn_query(x)
         keys = self.attn_key(x)
@@ -182,10 +189,10 @@ class TransformerAttentionModule(nn.Module):
         keys = keys.reshape(-1, self.num_heads, self.head_dim)
         values = values.reshape(-1, self.num_heads, self.head_dim)
 
-        attn_scores = ops.u_dot_v(graph, queries, keys) / self.head_dim ** 0.5
-        attn_probs = edge_softmax(graph, attn_scores)
+        attn_scores = ops.u_dot_v(self.graph, queries, keys) / self.head_dim ** 0.5
+        attn_probs = edge_softmax(self.graph, attn_scores)
 
-        x = ops.u_mul_e_sum(graph, values, attn_probs)
+        x = ops.u_mul_e_sum(self.graph, values, attn_probs)
         x = x.reshape(-1, self.dim)
 
         x = self.output_linear(x)
@@ -195,7 +202,7 @@ class TransformerAttentionModule(nn.Module):
 
 
 class TransformerAttentionSepModule(nn.Module):
-    def __init__(self, dim, num_heads, dropout, **kwargs):
+    def __init__(self, dim, num_heads, dropout, graph, **kwargs):
         super().__init__()
 
         _check_dim_and_num_heads_consistency(dim, num_heads)
@@ -210,6 +217,8 @@ class TransformerAttentionSepModule(nn.Module):
         self.output_linear = nn.Linear(in_features=dim * 2, out_features=dim)
         self.dropout = nn.Dropout(p=dropout)
 
+        self.graph = graph
+
     def forward(self, graph, x):
         queries = self.attn_query(x)
         keys = self.attn_key(x)
@@ -219,14 +228,33 @@ class TransformerAttentionSepModule(nn.Module):
         keys = keys.reshape(-1, self.num_heads, self.head_dim)
         values = values.reshape(-1, self.num_heads, self.head_dim)
 
-        attn_scores = ops.u_dot_v(graph, queries, keys) / self.head_dim ** 0.5
-        attn_probs = edge_softmax(graph, attn_scores)
+        attn_scores = ops.u_dot_v(self.graph, queries, keys) / self.head_dim ** 0.5
+        attn_probs = edge_softmax(self.graph, attn_scores)
 
-        message = ops.u_mul_e_sum(graph, values, attn_probs)
+        message = ops.u_mul_e_sum(self.graph, values, attn_probs)
         message = message.reshape(-1, self.dim)
         x = torch.cat([x, message], axis=1)
 
         x = self.output_linear(x)
         x = self.dropout(x)
+
+        return x
+
+class TEDGCNModule(nn.Module):
+    def __init__(self, dim, hidden_dim_multiplier, dropout, graph, **kwargs):
+        super().__init__()
+        self.feed_forward_module = FeedForwardModule(dim=dim,
+                                                     hidden_dim_multiplier=hidden_dim_multiplier,
+                                                     dropout=dropout)
+
+        self.U, self.S = graph.e
+    def forward(self, graph, x):
+        degrees = graph.out_degrees().float()
+        degree_edge_products = ops.u_mul_v(graph, degrees, degrees)
+        norm_coefs = 1 / degree_edge_products ** 0.5
+
+        x = ops.u_mul_e_sum(graph, x, norm_coefs)
+
+        x = self.feed_forward_module(graph, x)
 
         return x
