@@ -7,8 +7,8 @@ from torch.cuda.amp import autocast, GradScaler
 from model import Model
 from datasets import Dataset
 from utils import Logger, get_parameter_groups, get_lr_scheduler_with_warmup
-from metrics import METRICS
-from metrics_framework import METRICS_f
+from metrics import edge_homoliphy,node_homoliphy,our_homophily
+from metrics_framework import our_naive
 
 
 def get_args():
@@ -86,6 +86,13 @@ def evaluate(model, dataset, amp=False):
 
     return metrics,logits
 
+@torch.no_grad()
+def report_measures(logger,logits,graph):
+    pred = torch.argmax(logits,dim=1)
+    logger.add_line('node_homophily',node_homoliphy(pred,None,graph))
+    logger.add_line('edge_homophily',edge_homoliphy(pred,None,graph))
+    logger.add_line('our_naive',our_naive(pred,None,graph))
+    logger.add_line('our_homophily',our_homophily(pred,None,graph))
 
 def main():
     args = get_args()
@@ -129,11 +136,12 @@ def main():
                            scaler=scaler, amp=args.amp)
                 metrics,logits = evaluate(model=model, dataset=dataset, amp=args.amp)
                 logger.update_metrics(metrics=metrics, step=step)
-                report_measure(logger,logits,dataset.graph)
 
                 progress_bar.update()
                 progress_bar.set_postfix({metric: f'{value:.2f}' for metric, value in metrics.items()})
 
+        metrics,logits = evaluate(model=model, dataset=dataset, amp=args.amp)
+        report_measures(logger,logits,dataset.graph)
         logger.finish_run()
         model.cpu()
         dataset.next_data_split()

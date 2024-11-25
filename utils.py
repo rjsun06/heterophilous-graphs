@@ -54,7 +54,8 @@ class Logger:
               f'(step {self.best_steps[-1]}).\n')
 
     def add_line(self,name,value):
-        self.added[name]=value
+        if name not in self.added: self.added[name] = []
+        self.added[name].append(float(value))
 
     def save_metrics(self):
         num_runs = len(self.val_metrics)
@@ -75,6 +76,7 @@ class Logger:
         }
         for name,value in self.added.items():
             metrics[name]=value
+            metrics[name+'_avg']=sum(value)/len(value)
 
         with open(os.path.join(self.save_dir, 'metrics.yaml'), 'w') as file:
             yaml.safe_dump(metrics, file, sort_keys=False)
