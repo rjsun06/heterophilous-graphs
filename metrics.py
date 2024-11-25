@@ -83,9 +83,34 @@ def class_homoliphy1(labels,features,graph):
             val += class_add
     val /= c-1
     return val.item()
-    
+
+def adjusted_homophily_manual(graph, labels):
+    """
+    Calculate adjusted homophily for a graph.
+    Adjusted homophily accounts for the distribution of labels.
+
+    Parameters:
+    - graph: DGLGraph
+    - labels: Tensor of node labels
+
+    Returns:
+    - Adjusted homophily score
+    """
+    src, dst = graph.edges()
+    src_labels = labels[src]
+    dst_labels = labels[dst]
+
+    # Calculate edge homophily
+    edge_homophily = (src_labels == dst_labels).float().mean()
+
+    # Adjust for label distribution
+    label_probs = torch.bincount(labels) / labels.size(0)
+    expected_homophily = (label_probs ** 2).sum()
+
+    return edge_homophily - expected_homophily
+
 def adjusted_homoliphy(labels,features,graph):
-    return dgl.homophily.adjusted_homophily(graph,labels)
+    return adjusted_homophily_manual(graph,labels)
 
 def neigborhood_emb_sym(X,gi): #~D^{-1/2}~A~D^{-1/2}X
     degrees = gi.out_degrees().float()
