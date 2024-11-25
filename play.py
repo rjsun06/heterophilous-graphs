@@ -1,6 +1,5 @@
-
 #%%
-from metrics import METRICS
+from metrics import METRICS, neigborhood_emb_post, neigborhood_emb_pre, neigborhood_emb_sym
 from datasets import Dataset
 import pandas as pd
 import dgl
@@ -15,8 +14,9 @@ available_datasets = ['roman-empire', 'amazon-ratings', 'minesweeper', 'tolokers
 'actor', 'texas', 'texas-4-classes', 'cornell', 'wisconsin']
 #%%
 device = 'cuda:0'
+dataset_name = 'cornell'
 #%%
-dataset = Dataset(name='cornell',
+dataset = Dataset(name=dataset_name,
                 add_self_loops=False,
                 device=device,
                 use_sgc_features=False,
@@ -27,6 +27,24 @@ dataset = Dataset(name='cornell',
 labels = dataset.labels
 features = dataset.node_features
 graph = dataset.graph
+# pre = neigborhood_emb_pre(torch.nn.functional.one_hot(labels).float(),graph)
+# post = neigborhood_emb_post(torch.nn.functional.one_hot(labels).float(),graph)
+# sym = neigborhood_emb_post(torch.nn.functional.one_hot(labels).float(),graph)
+#%%
+results = []
+for name, metric in METRICS.items():
+    if name not in ['edges', 'nodes', 'classes', 'avg_dgree', 'edge_homophily', 'node_homophily',
+    'class_homophily', 'adjusted_homophily', 
+    'aggregation_homophily', 
+    # 'aggregation_homophily_modified', 
+    'our_homophily']: 
+        continue
+    value = metric(labels, features, graph)  # Calculate the metric
+    results.append({"Metric": name, dataset_name: value})  # Append to results
+# print(results)
+ret = pd.DataFrame(results)
+print(ret)
+
 #%%
 V = graph.nodes()
 n = graph.num_nodes()

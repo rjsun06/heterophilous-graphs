@@ -13,7 +13,6 @@ available_metrics = METRICS.keys()
 def get_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--name', type=str, default=None, help='Experiment name. If None, metric name is used.')
     parser.add_argument('--out', type=str, default='metrics_output.csv', help='output file name')
 
     parser.add_argument('--datasets', type=str, nargs='*',  
@@ -34,8 +33,6 @@ def get_args():
 
     args = parser.parse_args()
 
-    if args.name is None:
-        args.name = args.model
 
     return args
 

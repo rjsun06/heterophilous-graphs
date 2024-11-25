@@ -16,6 +16,7 @@ class Logger:
         self.num_data_splits = num_data_splits
         self.cur_run = None
         self.cur_data_split = None
+        self.added = {}
 
         print(f'Results will be saved to {self.save_dir}.')
         with open(os.path.join(self.save_dir, 'args.yaml'), 'w') as file:
@@ -52,6 +53,9 @@ class Logger:
               f'corresponding test {self.metric}: {self.test_metrics[-1]:.4f} '
               f'(step {self.best_steps[-1]}).\n')
 
+    def add_line(self,name,value):
+        self.added[name]=value
+
     def save_metrics(self):
         num_runs = len(self.val_metrics)
         val_metric_mean = np.mean(self.val_metrics).item()
@@ -69,6 +73,8 @@ class Logger:
             f'test {self.metric} values': self.test_metrics,
             'best steps': self.best_steps
         }
+        for name,value in self.added.items():
+            metrics[name]=value
 
         with open(os.path.join(self.save_dir, 'metrics.yaml'), 'w') as file:
             yaml.safe_dump(metrics, file, sort_keys=False)
@@ -82,6 +88,8 @@ class Logger:
         print(f'Val {self.metric} std: {metrics[f"val {self.metric} std"]:.4f}')
         print(f'Test {self.metric} mean: {metrics[f"test {self.metric} mean"]:.4f}')
         print(f'Test {self.metric} std: {metrics[f"test {self.metric} std"]:.4f}')
+        for name,value in self.added.items():
+            print(f'{name}:',value)
 
     @staticmethod
     def get_save_dir(base_dir, dataset, name):

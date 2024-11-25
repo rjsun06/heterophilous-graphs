@@ -7,6 +7,8 @@ from torch.cuda.amp import autocast, GradScaler
 from model import Model
 from datasets import Dataset
 from utils import Logger, get_parameter_groups, get_lr_scheduler_with_warmup
+from metrics import METRICS
+from metrics_framework import METRICS_f
 
 
 def get_args():
@@ -82,7 +84,7 @@ def evaluate(model, dataset, amp=False):
 
     metrics = dataset.compute_metrics(logits)
 
-    return metrics
+    return metrics,logits
 
 
 def main():
@@ -125,8 +127,9 @@ def main():
             for step in range(1, args.num_steps + 1):
                 train_step(model=model, dataset=dataset, optimizer=optimizer, scheduler=scheduler,
                            scaler=scaler, amp=args.amp)
-                metrics = evaluate(model=model, dataset=dataset, amp=args.amp)
+                metrics,logits = evaluate(model=model, dataset=dataset, amp=args.amp)
                 logger.update_metrics(metrics=metrics, step=step)
+                report_measure(logger,logits,dataset.graph)
 
                 progress_bar.update()
                 progress_bar.set_postfix({metric: f'{value:.2f}' for metric, value in metrics.items()})
