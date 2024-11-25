@@ -50,8 +50,14 @@ V = graph.nodes()
 n = graph.num_nodes()
 gi = dgl.add_self_loop(graph)
 total = 0
+
+def add_self_loops_manual(graph):
+    graph = graph.clone()  # Clone the graph to avoid modifying the original
+    graph.add_edges(graph.nodes(), graph.nodes())  # Add self-loops
+    return graph
+
 def agg_sim(graph,labels):
-    emb = dgl.ops.copy_u_mean(dgl.ops.add_self_loops(graph), torch.nn.functional.one_hot(labels).float())
+    emb = dgl.ops.copy_u_mean(add_self_loops_manual(graph), torch.nn.functional.one_hot(labels).float())
     def f(v):
         return emb[v]@emb.T
     return f
