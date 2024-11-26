@@ -21,6 +21,7 @@ def h_label(labels):
     return foo
 
 def h_feature(f):
+    f = f/torch.sqrt((f**2).sum(dim=1,keepdim=True))
     def foo(fr,to=None):
         if to == None:to=range(f.shape[0])
         return f[fr] @ f[to].T
@@ -79,6 +80,9 @@ def div_node(graph):
 def div_class(labels):
     return [torch.where(labels==i) for i in torch.unique(labels)]
 
+def pred_edge_homoliphy(labels,features,graph):
+    return H(h_feature(features),e(graph),batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()).item()
+
 def edge_homoliphy(labels,features,graph):
     return H(h_label(labels),e(graph),batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()).item()
 
@@ -106,6 +110,11 @@ def aggregation_homophily(labels,features,graph):
     emb = neigborhood_emb_post(torch.nn.functional.one_hot(labels).float(),gi)
     H = Hc(h_feature(emb),h_label(labels))
     return avg(div_node(graph),lambda v: H(v)>=0).item()
+
+def pred_our_naive(labels,features,graph):
+    gi = dgl.add_self_loop(graph)
+    emb = neigborhood_emb_post(features,gi)
+    return H(h_feature(features),h_feature(emb),batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()).item()
 
 def our_naive(labels,features,graph):
     gi = dgl.add_self_loop(graph)
@@ -145,12 +154,14 @@ METRICS_f = {
     'avg_dgree' : lambda labels,fetures,graph:
         graph.out_degrees().float().mean().item(),
     'edge_homophily': edge_homoliphy,
+    # 'pred_edge_homophily': pred_edge_homoliphy,
     'node_homophily': node_homoliphy,
     'class_homophily': class_homoliphy,
     # 'class_homophily1': class_homoliphy1,
     # 'adjusted_homophily': adjusted_homoliphy,
     'aggregation_homophily': aggregation_homophily,
     'our_naive': our_naive,
+    # 'pred_our_naive': pred_our_naive,
     'our_homophily': our_homophily,
     'our_class_homophily': our_class_homoliphy,
     # 'aggregation_homophily_modified': modified_aggregation_homophily,

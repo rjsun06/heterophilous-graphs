@@ -14,7 +14,7 @@ available_datasets = ['roman-empire', 'amazon-ratings', 'minesweeper', 'tolokers
 'actor', 'texas', 'texas-4-classes', 'cornell', 'wisconsin']
 #%%
 device = 'cuda:0'
-dataset_name = 'cornell'
+dataset_name = 'texas'
 #%%
 dataset = Dataset(name=dataset_name,
                 add_self_loops=False,
@@ -81,3 +81,30 @@ heter = torch.tensor(heter).to(device)
 class_homo=torch.bincount(labels,weights=homo)/torch.bincount(labels)
 class_heter=torch.bincount(labels,weights=heter)/torch.bincount(labels)
 #%%
+from metrics_framework import *
+gi = dgl.add_self_loop(graph)
+agg_labels = neigborhood_emb_sym(torch.nn.functional.one_hot(labels).float(),gi)
+agg_features = neigborhood_emb_sym(features,gi)
+h1 = h_label(labels)
+gh1 = h_feature(features) 
+h2 = h_feature(agg_labels) 
+gh2 = h_feature(agg_features) 
+print()
+print(H(h1,batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()))
+print(H(h1,h2,batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()))
+print(H(h1,gh1,batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()))
+print(H(h1,gh2,batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()))
+
+print()
+print(H(gh1,batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()))
+print(H(gh1,h1,batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()))
+print(H(gh1,h2,batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()))
+
+print()
+print(H(gh2,batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()))
+print(H(gh2,h1,batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()))
+print(H(gh2,h2,batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()))
+
+print()
+print(H(h2,batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()))
+print(H(h2,gh2,batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()))

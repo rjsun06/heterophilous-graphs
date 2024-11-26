@@ -90,8 +90,6 @@ class Logger:
         print(f'Val {self.metric} std: {metrics[f"val {self.metric} std"]:.4f}')
         print(f'Test {self.metric} mean: {metrics[f"test {self.metric} mean"]:.4f}')
         print(f'Test {self.metric} std: {metrics[f"test {self.metric} std"]:.4f}')
-        for name,value in self.added.items():
-            print(f'{name}:',value)
 
     @staticmethod
     def get_save_dir(base_dir, dataset, name):

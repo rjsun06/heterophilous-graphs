@@ -8,7 +8,7 @@ from model import Model
 from datasets import Dataset
 from utils import Logger, get_parameter_groups, get_lr_scheduler_with_warmup
 from metrics import edge_homoliphy,node_homoliphy,our_homophily
-from metrics_framework import our_naive
+from metrics_framework import our_naive, pred_our_naive, pred_edge_homoliphy
 
 
 def get_args():
@@ -88,11 +88,14 @@ def evaluate(model, dataset, amp=False):
 
 @torch.no_grad()
 def report_measures(logger,logits,graph):
+    if logits.dim() == 1: logits = torch.stack([logits,1-logits],axis=1)
     pred = torch.argmax(logits,dim=1)
     logger.add_line('node_homophily',node_homoliphy(pred,None,graph))
     logger.add_line('edge_homophily',edge_homoliphy(pred,None,graph))
     logger.add_line('our_naive',our_naive(pred,None,graph))
     logger.add_line('our_homophily',our_homophily(pred,None,graph))
+    logger.add_line('pred_edge_homophily',pred_edge_homoliphy(None,logits,graph))
+    logger.add_line('pred_our_naive',pred_our_naive(None,logits,graph))
 
 def main():
     args = get_args()
