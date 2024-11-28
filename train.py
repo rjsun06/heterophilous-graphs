@@ -10,6 +10,8 @@ from utils import Logger, get_parameter_groups, get_lr_scheduler_with_warmup
 from metrics import edge_homoliphy,node_homoliphy,our_homophily
 from metrics_framework import our_naive, pred_our_naive, pred_edge_homoliphy
 
+from new_model import FAGCN
+
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -24,7 +26,7 @@ def get_args():
 
     # model architecture
     parser.add_argument('--model', type=str, default='GT-sep',
-                        choices=['ResNet', 'GCN', 'SAGE', 'GAT', 'GAT-sep', 'GT', 'GT-sep'])
+                        choices=['ResNet', 'GCN', 'SAGE', 'GAT', 'GAT-sep', 'GT', 'GT-sep','SGCN','FAGCN'])
     parser.add_argument('--num_layers', type=int, default=5)
     parser.add_argument('--hidden_dim', type=int, default=512)
     parser.add_argument('--hidden_dim_multiplier', type=float, default=1)
@@ -43,6 +45,7 @@ def get_args():
     parser.add_argument('--warmup_proportion', type=float, default=0, help='Only used if num_warmup_steps is None.')
 
     # node feature augmentation
+    parser.add_argument('--use_agg_label', default=False, action='store_true')
     parser.add_argument('--use_sgc_features', default=False, action='store_true')
     parser.add_argument('--use_identity_features', default=False, action='store_true')
     parser.add_argument('--use_adjacency_features', default=False, action='store_true')
@@ -113,7 +116,19 @@ def main():
     logger = Logger(args, metric=dataset.metric, num_data_splits=dataset.num_data_splits)
 
     for run in range(1, args.num_runs + 1):
-        model = Model(model_name=args.model,
+        model = None
+        if args.model== 'FAGCN':
+            model = FAGCN(
+                input_size=dataset.num_node_features,
+                hidden_size=args.hidden_dim,
+                output_size=dataset.num_targets,
+                graph=dataset.graph, 
+                drop=args.dropout, 
+                eps=0.2, 
+                num_layer=3
+            )
+        else:
+            model = Model(model_name=args.model,
                       num_layers=args.num_layers,
                       input_dim=dataset.num_node_features,
                       hidden_dim=args.hidden_dim,

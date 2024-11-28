@@ -2,6 +2,8 @@ import torch
 from torch import nn
 from dgl import ops
 from dgl.nn.functional import edge_softmax
+import torch.nn.functional as F
+import torch_geometric
 
 
 class ResidualModuleWrapper(nn.Module):
@@ -240,21 +242,50 @@ class TransformerAttentionSepModule(nn.Module):
 
         return x
 
-class TEDGCNModule(nn.Module):
+class FAGCN(nn.Module):
+    def __init__(
+        self, dim, hidden_dim_multiplier, dropout, graph, eps=0.2, num_layer=3,**kargs
+    ):
+        super(FAGCN, self).__init__()
+        self.feed_forward_module = FeedForwardModule(dim=dim*hidden_dim_multiplier,
+                                                     hidden_dim_multiplier=1/hidden_dim_multiplier,
+                                                     dropout=dropout)
+
+        self.eps = eps
+        self.num_layer = num_layer
+
+        self.fa = torch_geometric.nn.FAConv(dim*hidden_dim_multiplier, dropout)
+
+        self.t1 = nn.Linear(dim, dim*hidden_dim_multiplier)
+        self.edge_index =torch.stack(graph.edges()).long()  
+
+    def forward(self, graph, feature):
+        feature = F.relu(self.t1(feature))
+        h_0 = feature
+        feature = self.fa(feature,h_0,self.edge_index)
+        feature = self.eps * h_0 + feature
+        feature = self.feed_forward_module(graph,feature)
+        return feature
+
+class SGCNModule(nn.Module):
     def __init__(self, dim, hidden_dim_multiplier, dropout, graph, **kwargs):
         super().__init__()
         self.feed_forward_module = FeedForwardModule(dim=dim,
                                                      hidden_dim_multiplier=hidden_dim_multiplier,
                                                      dropout=dropout)
 
-        self.U, self.S = graph.e
-    def forward(self, graph, x):
+        self.graph = graph
         degrees = graph.out_degrees().float()
         degree_edge_products = ops.u_mul_v(graph, degrees, degrees)
-        norm_coefs = 1 / degree_edge_products ** 0.5
-
-        x = ops.u_mul_e_sum(graph, x, norm_coefs)
-
-        x = self.feed_forward_module(graph, x)
+        self.norm_coefs = 1 / degree_edge_products ** 0.5
+        # self.trans = nn.Sequential([nn.Linear(in_features=dim*2, out_features=dim),torch.relu])
+        self.trans = nn.Linear(in_features=dim*2, out_features=dim)
+    
+    def forward(self, graph, x):
+        vf = ops.copy_v(self.graph,x)
+        uf = ops.copy_u(self.graph,x)
+        vf = self.trans(torch.concat([vf,uf],axis=1))
+        x = ops.copy_e_sum(self.graph,vf*self.norm_coefs.unsqueeze(1))
+        x = self.feed_forward_module(self.graph, x)
 
         return x
