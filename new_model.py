@@ -23,7 +23,7 @@ class FAGCN(nn.Module):
 
         self.t1 = nn.Linear(self.input_size, self.hidden_size)
         self.t2 = nn.Linear(self.hidden_size, self.output_size)
-        self.edge_index =torch.stack(graph.edges()).long()  
+        self.edge_index = graph
 
     def forward(self, graph, x):
         x = self.dropout(x)
@@ -34,5 +34,5 @@ class FAGCN(nn.Module):
         for i in range(len(self.gnn_layer)):
             x = self.gnn_layer[i](x,h_0,self.edge_index)
 
-        x = self.t2(x)
+        x = self.t2(x).squeeze(1)
         return x

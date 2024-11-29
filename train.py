@@ -122,10 +122,10 @@ def main():
                 input_size=dataset.num_node_features,
                 hidden_size=args.hidden_dim,
                 output_size=dataset.num_targets,
-                graph=dataset.graph, 
+                graph= torch.stack(dataset.graph.edges()).long(),
                 drop=args.dropout, 
                 eps=0.2, 
-                num_layer=3
+                num_layer=args.num_layers,
             )
         else:
             model = Model(model_name=args.model,

@@ -164,7 +164,7 @@ def graph_homo(model):
     ax.legend()
     return fig,ax
 
-model = 'GAT_l3'
+model = 'FAGCN_l1'
 
 # c_x(x='acc',model=('SAGE_l1','SAGE_l2'))
 # c_x(x=('edge_homophily_avg','r_edge_homophily'),model=model)
@@ -172,5 +172,7 @@ c_x(x=('node_homophily_avg','r_node_homophily'),model=model)
 # c_x(x=('our_naive_avg','r_our_naive'),model=model)
 # c_x(x=('r_our_naive','r_edge_homophily'),model=model)
 # c_x(x=('r_our_homophily','r_node_homophily'),model=model)
-p_measure(x='avg_dgree')
+# p_measure(x='avg_dgree')
 # graph_homo('SAGE_l1')
+
+# %%
