@@ -1,5 +1,5 @@
 #%%
-from metrics import METRICS, neigborhood_emb_post, neigborhood_emb_pre, neigborhood_emb_sym
+from metrics import METRICS, neigborhood_emb_post, neigborhood_emb_pre, neigborhood_emb_sym, nodewise_homophily
 from datasets import Dataset
 import pandas as pd
 import dgl
@@ -109,3 +109,41 @@ print()
 print(H(h2,batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()))
 print(H(h2,gh2,batch=max(1,graph.num_nodes()**2//(10**7)))(graph.nodes()))
 
+
+#%%
+datasets = [
+    'actor',
+    'amazon-ratings',
+    'chameleon',
+    'chameleon-directed',
+    'chameleon-filtered',
+    'chameleon-filtered-directed',
+    'cornell',
+    'minesweeper',
+    'questions',
+    'roman-empire',
+    'squirrel',
+    'squirrel-directed',
+    'squirrel-filtered',
+    'squirrel-filtered-directed',
+    'texas',
+    'texas-4-classes',
+    'tolokers',
+    'wisconsin',
+]
+for ds in datasets:
+    dataset = Dataset(name=ds,
+                    add_self_loops=False,
+                    device=device,
+                    use_sgc_features=False,
+                    use_identity_features=False,
+                    use_adjacency_features=False,
+                    do_not_use_original_features=False,
+                    bin2float=False)
+    labels = dataset.labels
+    features = dataset.node_features
+    graph = dataset.graph
+    result = nodewise_homophily(labels,features,graph)
+    torch.save(result,'metrics/'+ds+'-nodewise_homo.pt')
+    result = nodewise_our_homophily(labels,features,graph)
+    torch.save(result,'metrics/'+ds+'-nodewise_our_homo.pt')

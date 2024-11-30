@@ -17,6 +17,7 @@ class Logger:
         self.cur_run = None
         self.cur_data_split = None
         self.added = {}
+        self.added_points = {}
 
         print(f'Results will be saved to {self.save_dir}.')
         with open(os.path.join(self.save_dir, 'args.yaml'), 'w') as file:
@@ -57,6 +58,14 @@ class Logger:
         if name not in self.added: self.added[name] = []
         self.added[name].append(float(value))
 
+    def add_points(self,name,values,last = False):
+        if last:
+            self.added_points[name] = values
+            return
+        if name not in self.added_points: 
+            self.added_points[name] = []
+        self.added_points[name].append(values)
+
     def save_metrics(self):
         num_runs = len(self.val_metrics)
         val_metric_mean = np.mean(self.val_metrics).item()
@@ -80,6 +89,11 @@ class Logger:
 
         with open(os.path.join(self.save_dir, 'metrics.yaml'), 'w') as file:
             yaml.safe_dump(metrics, file, sort_keys=False)
+        for name,px in self.added_points.items():
+            res = None
+            if isinstance(px,list): res = torch.stack(px,axis=1).mean(axis=1)
+            else: res = px
+            torch.save(res,os.path.join(self.save_dir, name+'.pt'))
 
     def print_metrics_summary(self):
         with open(os.path.join(self.save_dir, 'metrics.yaml'), 'r') as file:

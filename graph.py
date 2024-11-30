@@ -2,8 +2,7 @@
 import os, yaml, collections
 import pandas as pd
 base_dir = 'experiments'
-def get_save_dir(dataset,name):
-    idx = 1
+def get_save_dir(dataset,name,idx=1):
     save_dir = os.path.join(base_dir, dataset, f'{name}_{idx:02d}')
     return save_dir
 
@@ -175,4 +174,43 @@ c_x(x=('node_homophily_avg','r_node_homophily'),model=model)
 # p_measure(x='avg_dgree')
 # graph_homo('SAGE_l1')
 
+#%%
+import torch
+from metrics import f_nodewise_homophily,nodewise_our_homophily
+from datasets import Dataset
+def get_nw_homo(dataset,model,idx=1,homo='nodewise_homophily'):
+    save_dir = get_save_dir(dataset,model,idx)
+    return torch.load(os.path.join(save_dir,homo+'.pt')).cpu()
+
+def get_f_nw_homo(dataset,model,idx=1,homo=f_nodewise_homophily):
+    save_dir = get_save_dir(dataset,model,idx)
+    pred = torch.load(os.path.join(save_dir,'last_pred.pt'))
+    logits = torch.load(os.path.join(save_dir,'last_logits.pt'))
+    graph=Dataset(name=dataset,
+                add_self_loops=False,
+                device='cuda:0',
+                use_sgc_features=False,
+                use_identity_features=False,
+                use_adjacency_features=False,
+                do_not_use_original_features=False,
+                bin2float=False).graph
+    return homo(pred,logits,graph).cpu()
+
+def get_nw_homo_gt(dataset,homo='nodewise_homophily'):
+    return torch.load(os.path.join('metrics',dataset+'-'+homo+'.pt')).cpu()
+
+def graph_node_homo_dots(dataset,model,idx=1):
+
+    res = get_f_nw_homo(dataset,model,idx,nodewise_our_homophily)
+    gt = get_nw_homo_gt(dataset,'nodewise_our_homo')
+    print(res.shape,gt.shape)
+
+    fig, ax = plt.subplots()
+    ax.scatter(gt,res)
+
+    ax.grid()
+    ax.legend()
+    return fig,ax
+
+graph_node_homo_dots('cornell','test',7)
 # %%

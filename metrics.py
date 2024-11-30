@@ -22,6 +22,7 @@ def edge_homoliphy(labels,features,graph):
     return n_hedges / n_edges
 
 
+
 def node_homoliphy(labels,features,graph):
     return dgl.homophily.node_homophily(graph,labels)
     # V = graph.nodes()
@@ -29,6 +30,20 @@ def node_homoliphy(labels,features,graph):
     # yu,yv = labels[u], labels[v]
     # ret = ((yv==yu)/graph.out_degrees(v)).sum().item()/graph.num_nodes()
     # return ret
+
+def nodewise_homophily(labels,features,graph):
+    V = graph.nodes()
+    v,u = graph.out_edges(V)
+    yu,yv = labels[u], labels[v]
+    ret = torch.bincount(v,weights=(yv==yu))/graph.out_degrees(V)
+    return ret
+
+def f_nodewise_homophily(labels,features,graph):
+    V = graph.nodes()
+    v,u = graph.out_edges(V)
+    yu,yv = features[u], features[v]
+    ret = torch.bincount(v,weights=torch.cosine_similarity(yv,yu,dim=1))/graph.out_degrees(V)
+    return ret
 
 
 def class_homoliphy(labels,features,graph):
@@ -205,10 +220,31 @@ def our_homophily(labels,features,graph):
         agg_sim = emb[v]@emb.T
         label_sim = labels==labels[v]
         homo = ((agg_sim*label_sim).sum()/agg_sim.sum()).item()
-        # base = agg_sim.float().mean().item()
-        # total += homo - base
         total += homo
     return total/n
+
+def nodewise_our_homophily(labels,features,graph):
+    V = graph.nodes()
+    gi = dgl.add_self_loop(graph)
+    emb = neigborhood_emb_post(torch.nn.functional.one_hot(labels).float(),gi)
+    total = []
+    for v in tqdm(V):
+        agg_sim = emb[v]@emb.T
+        label_sim = labels==labels[v]
+        homo = ((agg_sim*label_sim).sum()/agg_sim.sum()).item()
+        total.append(homo)
+    return torch.tensor(total,device=graph.device)
+def f_nodewise_our_homophily(labels,features,graph):
+    V = graph.nodes()
+    gi = dgl.add_self_loop(graph)
+    emb = neigborhood_emb_post(torch.nn.functional.one_hot(labels).float(),gi)
+    total = []
+    for v in tqdm(V):
+        agg_sim = emb[v]@emb.T
+        label_sim = torch.cosine_similarity(features, features[[v]],dim=1)
+        homo = ((agg_sim*label_sim).sum()/agg_sim.sum()).item()
+        total.append(homo)
+    return torch.tensor(total,device=graph.device)
 
 def aggregation_homophily_simp(labels,features,graph):
     V = graph.nodes()

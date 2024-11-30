@@ -7,7 +7,7 @@ from torch.cuda.amp import autocast, GradScaler
 from model import Model
 from datasets import Dataset
 from utils import Logger, get_parameter_groups, get_lr_scheduler_with_warmup
-from metrics import edge_homoliphy,node_homoliphy,our_homophily
+from metrics import edge_homoliphy,node_homoliphy,our_homophily,nodewise_homophily
 from metrics_framework import our_naive, pred_our_naive, pred_edge_homoliphy
 
 from new_model import FAGCN
@@ -99,6 +99,9 @@ def report_measures(logger,logits,graph):
     logger.add_line('our_homophily',our_homophily(pred,None,graph))
     logger.add_line('pred_edge_homophily',pred_edge_homoliphy(None,logits,graph))
     logger.add_line('pred_our_naive',pred_our_naive(None,logits,graph))
+    logger.add_points('nodewise_homophily',nodewise_homophily(pred,None,graph))
+    logger.add_points('last_pred',pred,last=True)
+    logger.add_points('last_logits',logits,last=True)
 
 def main():
     args = get_args()
